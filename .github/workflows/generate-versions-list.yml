@@ -1,0 +1,37 @@
+name: Build versions file
+
+on: workflow_dispatch
+
+jobs:
+  GetTags:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get tags
+        uses: octokit/request-action@v2.x
+        id: get_tags
+        with:
+          route: GET /repos/${{ github.repository }}/git/matching-refs/tags
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate version list
+        run: |
+          TAGS=(${{ join(fromJSON(steps.get_tags.outputs.data).*.ref, ' ') }})
+          jq -c -n '$ARGS.positional' --args "${TAGS[@]}" > ./versions/list.json
+          sed -i -e "s/refs\/tags\///g" ./versions/list.json
+
+      
+      - name: Commit file
+        run: |
+          git config --global user.name "panpanglagla"
+          git config --global user.email "bance.pierre@gmail.com"
+          git add ./versions/list.json
+          git commit -m"List of versions"
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
+          git push origin HEAD:main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
