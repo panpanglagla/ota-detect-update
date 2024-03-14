@@ -1,0 +1,64 @@
+name: Build new version
+
+on:
+  push:
+    tags:
+      - v*.*.*
+
+jobs:
+  Build:
+    strategy:
+      matrix:
+        arduino-platform: ["arduino:esp32"]
+        include:
+          - arduino-platform: "arduino:esp32"
+            fqbn: "arduino:esp32:nano_nora"
+            buildFolder: "arduino.esp32.nano_nora"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Arduino CLI
+        uses: arduino/setup-arduino-cli@v1
+
+      - name: Install platform
+        run: |
+          arduino-cli core update-index
+          arduino-cli core install ${{ matrix.arduino-platform }}
+
+      - name: Install libraries
+        run: |
+          arduino-cli lib install DFRobotDFPlayerMini@1.0.5
+          arduino-cli lib install Bounce2@2.71
+          arduino-cli lib install NTPClient@3.2.1
+          arduino-cli lib install Timezone@1.2.4
+          arduino-cli lib install Time@1.6.1
+          arduino-cli lib install ArduinoJson@7.0.4
+          arduino-cli lib install StringSplitter@1.0.0
+
+      - name: Replacements in source code
+        run: |
+          sed -i -e "s/APP_VERSION/${{ github.ref_name }}/g" ./constants.h
+          sed -i -e "s/DEVICE_FQBN/${{ matrix.fqbn }}/g" ./constants.h
+          sed -i -e "s/BINARIES_FOLDER/${{ matrix.buildFolder }}/g" ./constants.h
+
+      - name: Compile Sketch
+        run: |
+          mkdir ./build
+          arduino-cli compile  --export-binaries --output-dir ./build/${{ matrix.buildFolder }} --fqbn ${{ matrix.fqbn }} --config-file="./arduino-cli.yaml" ./
+
+      - name: Commit sketch binaries
+        run: |
+          mkdir -p ./versions/${{ github.ref_name }}
+          mv ./build/${{ matrix.buildFolder }} ./versions/${{ github.ref_name }}
+          rm -rf ./build
+          git config --global user.name "panpanglagla"
+          git config --global user.email "bance.pierre@gmail.com"
+          git add ./versions
+          git commit -m"Binaries for version ${{ github.ref_name }}"
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
+          git push origin HEAD:main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
