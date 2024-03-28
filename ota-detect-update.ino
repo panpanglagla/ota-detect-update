@@ -94,7 +94,7 @@ void loop() {
       state = StateType_Idle;
       return;
     case StateType_Idle:
-      blink("blue", 1, 500);
+      blink("red", 1, 500);
       t = (long)timeManager.getNowUTC();
       Serial.print("Next check in ");
       Serial.print(CHECK_INTERVAL_IN_SECONDS - t + lastCheck);
