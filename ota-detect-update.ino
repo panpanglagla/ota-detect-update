@@ -149,7 +149,7 @@ void ready() {
 }
 
 void idle() {
-  blink("green", 1, 500);
+  blink("blue", 1, 500);
   t = (long)timeManager.getNowUTC();
   Serial.print("Next versions check in ");
   Serial.print(CHECK_INTERVAL_IN_SECONDS - t + lastCheck);
